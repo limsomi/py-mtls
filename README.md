@@ -1,102 +1,39 @@
-## PoC mTLS
+# Proof of Concept: TLS/SSL with Python
 
-```bash
-user@node:$ bin/mtls.sh
-directory 'ssl/server/' was created
-directory 'ssl/client/' was created
-Generating RSA AES-256 Private Key for Root Certificate Authority
-Generating RSA private key, 4096 bit long modulus
-.......................................................................................................................................................................................++++
-............................................................++++
-e is 65537 (0x10001)
-Enter pass phrase for ./ssl/CA.key:
-Verifying - Enter pass phrase for ./ssl/CA.key:
-Generating Certificate for Root Certificate Authority
-Enter pass phrase for ./ssl/CA.key:
-You are about to be asked to enter information that will be incorporated
-into your certificate request.
-What you are about to enter is what is called a Distinguished Name or a DN.
-There are quite a few fields but you can leave some blank
-For some fields there will be a default value,
-If you enter '.', the field will be left blank.
------
-Country Name (2 letter code) []:ES
-State or Province Name (full name) []:Madrid
-Locality Name (eg, city) []:
-Organization Name (eg, company) []:Python CA
-Organizational Unit Name (eg, section) []:
-Common Name (eg, fully qualified host name) []:
-Email Address []:
-Generating RSA Private Key for Server Certificate
-Generating RSA private key, 4096 bit long modulus
-...........................++++
-..............................................................................++++
-e is 65537 (0x10001)
-Generating Certificate Signing Request for Server Certificate
-You are about to be asked to enter information that will be incorporated
-into your certificate request.
-What you are about to enter is what is called a Distinguished Name or a DN.
-There are quite a few fields but you can leave some blank
-For some fields there will be a default value,
-If you enter '.', the field will be left blank.
------
-Country Name (2 letter code) []:ES
-State or Province Name (full name) []:Madrid
-Locality Name (eg, city) []:
-Organization Name (eg, company) []:Python CA
-Organizational Unit Name (eg, section) []:Python Server
-Common Name (eg, fully qualified host name) []:
-Email Address []:
+This project demonstrates a basic implementation of Transport Layer Security (TLS) and Secure Socket Layer (SSL) communication using Python scripts. It includes scripts for both a TLS server (`server-tls.py`) and a TLS client (`client-tls.py`), as well as a Makefile (`Makefile`) for automating SSL/TLS certificate management with OpenSSL.
 
-Please enter the following 'extra' attributes
-to be sent with your certificate request
-A challenge password []:
-Generating Certificate for Server Certificate
-Signature ok
-subject=/C=ES/ST=Madrid/O=Python CA/OU=Python Server
-Getting CA Private Key
-Enter pass phrase for ./ssl/CA.key:
-Generating RSA Private Key for Client Certificate
-Generating RSA private key, 4096 bit long modulus
-...........................................................................................................++++
-.....................................................................................................................................++++
-e is 65537 (0x10001)
-Generating Certificate Signing Request for Client Certificate
-You are about to be asked to enter information that will be incorporated
-into your certificate request.
-What you are about to enter is what is called a Distinguished Name or a DN.
-There are quite a few fields but you can leave some blank
-For some fields there will be a default value,
-If you enter '.', the field will be left blank.
------
-Country Name (2 letter code) []:ES
-State or Province Name (full name) []:Madrid
-Locality Name (eg, city) []:
-Organization Name (eg, company) []:Python CA
-Organizational Unit Name (eg, section) []:Python Client
-Common Name (eg, fully qualified host name) []:
-Email Address []:
+## Usage
 
-Please enter the following 'extra' attributes
-to be sent with your certificate request
-A challenge password []:
-Generating Certificate for Client Certificate
-Signature ok
-subject=/C=ES/ST=Madrid/O=Python CA/OU=Python Client
-Getting CA Private Key
-Enter pass phrase for ./ssl/CA.key:
-Generating PEM file for Client
-writing RSA key
-Generating PEM file for Server
-writing RSA key
-Done!
+### Setting Up the Environment
 
-user@node:$ openssl verify -verbose -CAfile ssl/CA.pem ssl/server/server.crt
-ssl/server/server.crt: OK
+1. **Install Requirements**: Ensure all dependencies are installed using `pip`:
 
-user@node:$ openssl verify -verbose -CAfile ssl/CA.pem ssl/client/client.crt
-ssl/client/client.crt: OK
+    ```bash
+    pip install -r requirements.txt
+    ```
+2. **Generate Certificates**: Use the Makefile to generate SSL/TLS certificates. Replace <name> with the desired certificate name:
 
-# SERVER HTTP with SSL
-user@node:$ SSLKEYLOGFILE=~/sslkeylog.log curl https://localhost:1234 -k
-```
+    ```bash
+    make generate_cert NAME=<name>
+    ```
+
+3. **Start Server and Client**: Execute the Python scripts for the TLS server and client:
+
+    ```bash
+    python src/server-tls.py
+    python src/client-tls.py
+    ```
+
+### Cleaning Up
+
+- Clean Certificates: Remove generated certificates for a specific name:
+
+    ```bash
+    make clean NAME=<name>
+    ```
+
+- Clean All: Remove all generated certificates and files:
+
+    ```bash
+    make clean-all
+    ```

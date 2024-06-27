@@ -1,0 +1,20 @@
+# Ignore Python byte code files, virtual environments, and local development files
+
+# Python
+*.pyc
+__pycache__/
+venv/
+*.pyo
+*.pyc
+
+# macOS
+.DS_Store
+
+# IDEs and editors
+.vscode/
+
+# Logs
+*.log
+
+# Ignore SSL/TLS certificates (generated in the ssl/ directory)
+ssl/

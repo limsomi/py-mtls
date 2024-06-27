@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "[DEPRECATED] use the Makefile"
+exit 0
+
 BOLD=$(tput bold)
 CLEAR=$(tput sgr0)
 
@@ -51,3 +54,11 @@ cat ${server}/server.crt >> ${server}/server.pem
 cat ${ssl}/CA.pem >> ${server}/server.pem
 
 echo "Done!"
+
+openssl genrsa -out ssl/foo/foo.key 4096
+openssl req -new -key ssl/foo/foo.key -out $client/client.csr
+openssl x509 -req -in ssl/foo/foo.csr -CA ssl/CA.pem -CAkey ssl/CA.key -CAcreateserial -out ssl/foo/foo.crt -days 1825 -sha256
+openssl rsa -in ssl/foo/foo.key -out ssl/foo/nopassword.key
+cat ssl/foo/nopassword.key > ssl/foo/server.pem
+cat ssl/foo/server.crt >> ssl/foo/server.pem
+cat ssl/foo/CA.pem >> ssl/foo/server.pem

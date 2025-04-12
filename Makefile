@@ -12,14 +12,16 @@ RESET := $(shell tput -Txterm sgr0)
 SHELL := /bin/bash
 
 # Check if NAME is defined, throw error if not
-ifndef NAME
-$(error NAME is not set. Please specify NAME=<name> when invoking make)
-endif
+# ifndef NAME
+# $(error NAME is not set. Please specify NAME=<name> when invoking make)
+# endif
 
 # Directories
-SSL_BASE_DIR := ssl
+SSL_BASE_DIR := $(DIR)
 SSL_DIR := $(SSL_BASE_DIR)/$(NAME)
 
+SSL_ROOT:=./ssl/$(ROOT)
+OPENSSL_CNF := /etc/pki/tls/openssl.cnf
 .PHONY: all help generate_certificates clean clean-all generate_ca clean_ca
 
 # Help target
@@ -50,16 +52,17 @@ generate_key: create_ssl_dir
 
 generate_csr: generate_key
 	@if [ ! -f "$(SSL_DIR)/$(NAME).csr" ] || [ "$(force)" = "yes" ]; then \
-	    echo "Generating CSR: $(SSL_DIR)/$(NAME).csr"; \
-	    openssl req -new -key $(SSL_DIR)/$(NAME).key -out $(SSL_DIR)/$(NAME).csr; \
+		RANDOM_SUBJECT=$$(python3 generate_subject.py | tr -d '\n'); \
+	    echo "Generating CSR with random subject: $$RANDOM_SUBJECT"; \
+	    openssl req -new -key $(SSL_DIR)/$(NAME).key -out $(SSL_DIR)/$(NAME).csr -subj "$$RANDOM_SUBJECT" -config $(OPENSSL_CNF); \
 	else \
 	    echo "CSR $(SSL_DIR)/$(NAME).csr already exists, skipping generation."; \
 	fi
 
-sign_certificate: generate_csr generate_ca
+sign_certificate: generate_csr
 	@if [ ! -f "$(SSL_DIR)/$(NAME).crt" ] || [ "$(force)" = "yes" ]; then \
 	    echo "Signing certificate: $(SSL_DIR)/$(NAME).crt"; \
-	    openssl x509 -req -in $(SSL_DIR)/$(NAME).csr -CA $(SSL_BASE_DIR)/CA.pem -CAkey $(SSL_BASE_DIR)/CA.key -CAcreateserial -out $(SSL_DIR)/$(NAME).crt -days 1825 -sha256; \
+	    openssl x509 -req -in $(SSL_DIR)/$(NAME).csr -CA $(SSL_ROOT)/$(ROOT).pem -CAkey $(SSL_ROOT)/$(ROOT).key -CAcreateserial -out $(SSL_DIR)/$(NAME).crt -days 1825 -sha256 -extfile $(OPENSSL_CNF) -extensions v3_req; \
 	else \
 	    echo "Certificate $(SSL_DIR)/$(NAME).crt already exists, skipping signing."; \
 	fi
@@ -77,7 +80,8 @@ create_pem_files: create_nopassword_key sign_certificate
 	    echo "Creating PEM file: $(SSL_DIR)/$(NAME).pem"; \
 	    cat $(SSL_DIR)/nopassword.key > $(SSL_DIR)/$(NAME).pem; \
 	    cat $(SSL_DIR)/$(NAME).crt >> $(SSL_DIR)/$(NAME).pem; \
-	    cat $(SSL_BASE_DIR)/CA.pem >> $(SSL_DIR)/$(NAME).pem; \
+	    cat $(SSL_ROOT)/$(ROOT).pem >> $(SSL_DIR)/$(NAME).pem; \
+		# cat ./ssl/RootCA/RootCA.pem >>  $(SSL_ROOT)/$(ROOT).pem; \
 	else \
 	    echo "PEM file $(SSL_DIR)/$(NAME).pem already exists, skipping creation."; \
 	fi
@@ -86,20 +90,36 @@ create_pem_files: create_nopassword_key sign_certificate
 generate_ca: generate_ca_key generate_ca_cert ## Generate CA key and certificate
 
 generate_ca_key: create_ssl_dir
-	@if [ ! -f "$(SSL_BASE_DIR)/CA.key" ] || [ "$(force_ca)" = "yes" ]; then \
-	    echo "Generating CA key: $(SSL_BASE_DIR)/CA.key"; \
-	    openssl genrsa -out $(SSL_BASE_DIR)/CA.key 4096; \
+	@if [ ! -f "$(SSL_DIR)/$(NAME)" ] || [ "$(force_ca)" = "yes" ]; then \
+	    echo "Generating CA key: $(SSL_DIR)/$(NAME).key"; \
+	    openssl genrsa -out $(SSL_DIR)/$(NAME).key 4096; \
 	else \
-	    echo "CA key $(SSL_BASE_DIR)/CA.key already exists, skipping generation."; \
+	    echo "CA key $(SSL_DIR)/$(NAME).key already exists, skipping generation."; \
 	fi
 
 generate_ca_cert: generate_ca_key
-	@if [ ! -f "$(SSL_BASE_DIR)/CA.pem" ] || [ "$(force_ca)" = "yes" ]; then \
-	    echo "Generating CA certificate: $(SSL_BASE_DIR)/CA.pem"; \
-	    openssl req -x509 -new -nodes -key $(SSL_BASE_DIR)/CA.key -sha256 -days 1825 -out $(SSL_BASE_DIR)/CA.pem; \
+	@if [ ! -f "$(SSL_DIR)/$(NAME)" ] || [ "$(force_ca)" = "yes" ]; then \
+	    echo "Generating CA certificate: $(SSL_DIR)/$(NAME).pem"; \
+		RANDOM_SUBJECT=$$(python3 generate_subject.py | tr -d '\n'); \
+	    echo "Generating CSR with random subject: $$RANDOM_SUBJECT"; \
+	    openssl req -x509 -new -nodes -key $(SSL_DIR)/$(NAME).key -sha256 -days 1825 -out $(SSL_DIR)/$(NAME).pem -subj "$$RANDOM_SUBJECT"; \
 	else \
-	    echo "CA certificate $(SSL_BASE_DIR)/CA.pem already exists, skipping generation."; \
+	    echo "CA certificate $(SSL_DIR)/$(NAME).pem already exists, skipping generation."; \
 	fi
+
+generate_intermediate_ca: generate_ca_key generate_intermediate_ca_cert ## Generate an Intermediate CA certificate
+
+generate_intermediate_ca_cert: generate_ca_key
+	@if [ ! -f "$(SSL_DIR)/$(NAME).pem" ] || [ "$(force_ca)" = "yes" ]; then \
+	    echo "Generating Intermediate CA certificate: $(SSL_DIR)/$(NAME).pem"; \
+		RANDOM_SUBJECT=$$(python3 generate_subject.py | tr -d '\n'); \
+	    openssl req -new -key $(SSL_DIR)/$(NAME).key -out $(SSL_DIR)/$(NAME).csr -subj "$$RANDOM_SUBJECT"; \
+	    openssl x509 -req -in $(SSL_DIR)/$(NAME).csr -CA $(SSL_ROOT)/$(ROOT).pem -CAkey $(SSL_ROOT)/$(ROOT).key -CAcreateserial \
+	    -out $(SSL_DIR)/$(NAME).pem -days 1825 -sha256 -extensions v3_ca -extfile $(OPENSSL_CNF); \
+	else \
+	    echo "Intermediate CA certificate $(SSL_DIR)/$(NAME).pem already exists, skipping generation."; \
+	fi
+
 
 # Create SSL directory if it does not exist
 create_ssl_dir:

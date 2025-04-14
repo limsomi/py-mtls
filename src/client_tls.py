@@ -1,9 +1,9 @@
-import socket
+import socket,time,json
 import ssl
 import pprint
 import os
 import random
-
+from utils.crypto_utils import *
 class Client:
     def __init__(self,host,port,ca_cert_file,client_crt,client_key):
         self.host=host
@@ -11,6 +11,22 @@ class Client:
         self.ca_cert_file=ca_cert_file
         self.client_crt=client_crt
         self.client_key=client_key
+
+    def create_packet(self):
+        payload = {
+            "timestamp": int(time.time()),
+            "client_id": "client123",
+            "request_port": 22
+        }
+        raw = json.dumps(payload).encode()
+        return encrypt(raw)
+
+    # send_packet("127.0.0.1", 7000)  # 서버의 SPA 리스너 포트
+    def send_packet(self,target_ip, target_port):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        packet = create_packet()
+        sock.sendto(packet, (target_ip, target_port))
+        print("SPA packet sent.")
 
     def run(self):
     

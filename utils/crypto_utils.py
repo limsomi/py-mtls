@@ -1,19 +1,16 @@
-import socket, time, json
-from crypto_utils import encrypt
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+import base64
 
-def create_packet():
-    payload = {
-        "timestamp": int(time.time()),
-        "client_id": "client123",
-        "request_port": 22
-    }
-    raw = json.dumps(payload).encode()
-    return encrypt(raw)
+KEY = b'secretkey1234567'  # 16-byte key
+IV = b'initialvector123'   # 16-byte IV
 
-def send_packet(target_ip, target_port):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    packet = create_packet()
-    sock.sendto(packet, (target_ip, target_port))
-    print("SPA packet sent.")
+def encrypt(data: bytes) -> bytes:
+    cipher = AES.new(KEY, AES.MODE_CBC, IV)
+    encrypted = cipher.encrypt(pad(data, AES.block_size))
+    return base64.b64encode(encrypted)
 
-send_packet("127.0.0.1", 7000)  # 서버의 SPA 리스너 포트
+def decrypt(data: bytes) -> bytes:
+    cipher = AES.new(KEY, AES.MODE_CBC, IV)
+    decoded = base64.b64decode(data)
+    return unpad(cipher.decrypt(decoded), AES.block_size)

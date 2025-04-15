@@ -4,6 +4,8 @@ import pprint
 import threading
 import random
 import os
+from .gateway import GateWay
+from .sdp_controller import SDP_Controll
 
 class Server:
     def __init__(self,host,port,ca_cert_file,server_pem,server_key):
@@ -79,6 +81,13 @@ class Server:
 
 
 if __name__ == '__main__':
+    sdp_controller=SDP_Controll()
+    gateway=GateWay(sdp_controller)
+
+    gateway_thread=threading.Thread(target=gateway.listen)
+    gateway_thread.daemon=True
+    gateway_thread.start()
+
     SERVER_PATH="./ssl/server"
     server_list=os.listdir(SERVER_PATH)
     port_list=[1234,1235,1236]

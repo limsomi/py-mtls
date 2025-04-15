@@ -2,15 +2,14 @@ import socket
 import ssl
 import pprint
 import threading
-import random
+import time
 import os
 from .gateway import GateWay
 from .sdp_controller import SDP_Controll
 
 class Server:
-    def __init__(self,host,port,ca_cert_file,server_pem,server_key):
+    def __init__(self,host,ca_cert_file,server_pem,server_key):
         self.host=host
-        self.port=port
         self.ca_cert_file=ca_cert_file
         self.server_pem=server_pem
         self.server_key=server_key
@@ -49,35 +48,39 @@ class Server:
         finally:
             if secure_sock:
                 secure_sock.close()
+    
+    def start_listening(self):
+        self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        self.context.verify_mode = ssl.CERT_REQUIRED
+        self.context.load_cert_chain(certfile=self.server_pem, keyfile=self.server_key)
+        self.context.load_verify_locations(cafile=self.ca_cert_file)
 
-    def run(self):
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.verify_mode = ssl.CERT_REQUIRED #클라이언트도 자신의 인증서를 보내야함
-        context.load_cert_chain(certfile=self.server_pem, keyfile=self.server_key)
-        context.load_verify_locations(cafile=CA_CERT_FILE)
+        # 서버 소켓은 여전히 초기화 하지만, 기다리지는 않는다.
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        print(f"Server ready, waiting for Gateway to open port ...")
 
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server_socket.bind((self.host,self.port))
-        server_socket.listen(10)  # 최대 10개의 연결을 대기
-
-        print(f"Server listening on {self.host}:{self.port}")
-
+    def accept_connections(self):
         try:
+            self.server_socket.listen(10)
+            print(f"Server listening on {self.host}")
+
             while True:
-                client_socket, fromaddr = server_socket.accept()
+                client_socket, fromaddr = self.server_socket.accept()
                 print(f"Connection accepted from {fromaddr}")
-                
-                # 스레드 생성하여 클라이언트 처리
-                client_thread = threading.Thread(target=self.handle_client_connection, args=(client_socket, context))
+
+                client_thread = threading.Thread(target=self.handle_client_connection, args=(client_socket, self.context))
                 client_thread.start()
 
-        except KeyboardInterrupt:
-            print("Server manually stopped.")
         except Exception as e:
-            print(f"Server error: {e}")
+            print(f"Error handling client connections: {e}")
         finally:
-            server_socket.close()
+            if self.server_socket:
+                self.server_socket.close()
+    def bind_to_port(self,port):
+        """ Gateway가 인증을 통과한 후 서버가 포트를 바인딩하도록 하기 """
+        print(f"server listening on {self.host} {port}")
+        self.server_socket.bind((self.host, port))
 
 
 if __name__ == '__main__':
@@ -90,15 +93,17 @@ if __name__ == '__main__':
 
     SERVER_PATH="./ssl/server"
     server_list=os.listdir(SERVER_PATH)
-    port_list=[1234,1235,1236]
+
     
     for i in range(len(server_list)):
         HOST='127.0.0.1'
-        PORT=port_list[i]
+
         CA_CERT_FILE = "./ssl\RootCA\RootCA_with_ClientCA.pem"
         SERVER_PEM = os.path.join(SERVER_PATH,server_list[i],server_list[i]+".pem")
         SERVER_KEY = os.path.join(SERVER_PATH,server_list[i],server_list[i]+".key")
-        server=Server(HOST,PORT,CA_CERT_FILE,SERVER_PEM,SERVER_KEY)
-        server_thread = threading.Thread(target=server.run)
-        server_thread.start()
+        server=Server(HOST,CA_CERT_FILE,SERVER_PEM,SERVER_KEY)
+        gateway.put_server(server)
+        server.start_listening()  # 서버 준비 완료, Gateway에서 포트 열기를 기다림
+    while True:
+        time.sleep(1)
 

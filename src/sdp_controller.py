@@ -12,9 +12,9 @@ class SDP_Controll:
             if abs(time.time() - payload["timestamp"]) > 30:
                 print("Rejected: Expired packet")
                 return 
-            if payload['request_port']==1234:
-                print("Rejected: Expired packet")
-                return 
+            # if payload['request_port']==1234:
+            #     print("Rejected: Expired packet")
+            #     return 
             return payload
 
         except Exception as e:

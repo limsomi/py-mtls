@@ -6,12 +6,11 @@ import random
 import os
 
 class Server:
-    def __init__(self,host,port,ca_cert_file,server_pem,server_key):
-        self.host=host
-        self.port=port
+    def __init__(self,ca_cert_file,server_pem,server_key):
         self.ca_cert_file=ca_cert_file
         self.server_pem=server_pem
         self.server_key=server_key
+
 
     def handle_client_connection(self,client_socket, context):
         secure_sock = None
@@ -56,10 +55,10 @@ class Server:
 
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server_socket.bind((self.host,self.port))
+        server_socket.bind(('0.0.0.0',1234))
         server_socket.listen(10)  # 최대 10개의 연결을 대기
-
-        print(f"Server listening on {self.host}:{self.port}")
+        local_ip = socket.gethostbyname(socket.gethostname())
+        print(f"Server listening on {local_ip}:1234")
 
         try:
             while True:
@@ -79,17 +78,15 @@ class Server:
 
 
 if __name__ == '__main__':
-    SERVER_PATH="./ssl/server"
-    server_list=os.listdir(SERVER_PATH)
-    port_list=[1234,1235,1236]
-    
-    for i in range(len(server_list)):
-        HOST='127.0.0.1'
-        PORT=port_list[i]
-        CA_CERT_FILE = "./ssl\RootCA\RootCA_with_ClientCA.pem"
-        SERVER_PEM = os.path.join(SERVER_PATH,server_list[i],server_list[i]+".pem")
-        SERVER_KEY = os.path.join(SERVER_PATH,server_list[i],server_list[i]+".key")
-        server=Server(HOST,PORT,CA_CERT_FILE,SERVER_PEM,SERVER_KEY)
-        server_thread = threading.Thread(target=server.run)
-        server_thread.start()
+    server_name = os.environ.get("SERVER_NAME")
+    if not server_name:
+        raise ValueError("SERVER_NAME environment variable is not set.")
+
+    SERVER_PATH = f"./ssl/server/{server_name}"
+    CA_CERT_FILE = "./ssl/RootCA/RootCA_with_ClientCA.pem"
+    SERVER_PEM = os.path.join(SERVER_PATH, f"{server_name}.pem")
+    SERVER_KEY = os.path.join(SERVER_PATH, f"{server_name}.key")
+
+    server = Server(CA_CERT_FILE, SERVER_PEM, SERVER_KEY)
+    server.run()
 

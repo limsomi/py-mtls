@@ -5,23 +5,22 @@ import os
 import random
 
 class Client:
-    def __init__(self,host,port,ca_cert_file,client_crt,client_key):
-        self.host=host
-        self.port=port
+    def __init__(self,ca_cert_file,client_crt,client_key):
         self.ca_cert_file=ca_cert_file
         self.client_crt=client_crt
         self.client_key=client_key
 
-    def run(self):
+    def run(self,host_ip):
     
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((self.host, self.port))
+        sock.bind(('0.0.0.0',0))
+        sock.connect((host_ip, 1234))
 
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         context.load_cert_chain(certfile=self.client_crt, keyfile=self.client_key)
         context.verify_mode = ssl.CERT_REQUIRED
         context.load_verify_locations(cafile=self.ca_cert_file)
-        secure_sock = context.wrap_socket(sock, server_side=False, server_hostname=self.host)
+        secure_sock = context.wrap_socket(sock, server_side=False, server_hostname=host_ip)
 
         try:
 
@@ -36,20 +35,17 @@ class Client:
             secure_sock.close()
 
 if __name__ == '__main__':
+    client_name = os.environ.get("CLIENT_NAME")
+    client_number = int(client_name.replace("client", ""))
+    client_ip = f"192.168.100.{client_number}"
 
-    CLIENT_PATH="./ssl/client"
-    client_list=os.listdir(CLIENT_PATH)
-    port_list=[1234,1235,1236]
+    host_ips = [f"192.168.100.{i}" for i in range(100, 103)]
+    host_ip=random.choice(host_ips)
+   
+    ca_cert_file = "./ssl/RootCA/RootCA_with_ServerCA.pem"
+    client_crt = f"./ssl/client/{client_name}/{client_name}.crt"
+    client_key = f"./ssl/client/{client_name}/{client_name}.key"
 
-    for client_name in client_list:
-        HOST = '127.0.0.1'
-        PORT =port_list[random.choice([0,1, 2])]
-
-        CA_CERT_FILE = "ssl\RootCA\RootCA_with_ServerCA.pem"
-        
-        CLIENT_CRT = os.path.join(CLIENT_PATH,client_name,client_name+".crt")
-        CLIENT_KEY =  os.path.join(CLIENT_PATH,client_name,client_name+".key")
-
-        client=Client(HOST,PORT,CA_CERT_FILE,CLIENT_CRT,CLIENT_KEY)
-        client.run()
-        print('finish '+client_name)
+    client = Client(ca_cert_file, client_crt, client_key)
+    client.run(host_ip)
+    print(f"✅ Finished client: {client_name}")

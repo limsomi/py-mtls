@@ -4,9 +4,10 @@ import pprint
 import threading
 import random
 import os
-
+import subprocess
 class Server:
-    def __init__(self,ca_cert_file,server_pem,server_key):
+    def __init__(self,id,ca_cert_file,server_pem,server_key):
+        self.id=id
         self.ca_cert_file=ca_cert_file
         self.server_pem=server_pem
         self.server_key=server_key
@@ -35,7 +36,7 @@ class Server:
             print(f"Received: {data.decode()}")
 
             # 응답 전송
-            response = b'Hello from server'
+            response = f'hello from {self.id}'.encode()
             secure_sock.sendall(response)
             print(f"Sent: {response.decode()}")
 
@@ -58,7 +59,7 @@ class Server:
         server_socket.bind(('0.0.0.0',1234))
         server_socket.listen(10)  # 최대 10개의 연결을 대기
         local_ip = socket.gethostbyname(socket.gethostname())
-        print(f"Server listening on {local_ip}:1234")
+        print(f"Server listening on {local_ip} : 1234")
 
         try:
             while True:
@@ -87,6 +88,7 @@ if __name__ == '__main__':
     SERVER_PEM = os.path.join(SERVER_PATH, f"{server_name}.pem")
     SERVER_KEY = os.path.join(SERVER_PATH, f"{server_name}.key")
 
-    server = Server(CA_CERT_FILE, SERVER_PEM, SERVER_KEY)
+    server = Server(server_name,CA_CERT_FILE, SERVER_PEM, SERVER_KEY)
+    subprocess.call('ip route add 192.168.10.0/24 via 192.168.20.200',shell=True)
     server.run()
 

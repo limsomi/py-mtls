@@ -1,25 +1,15 @@
-# docker network create \
-#   --subnet=192.168.100.0/24 \
-#   --gateway=192.168.100.1 \
-#   my_spa_net
 
-# 2. 클라이언트 컨테이너 실행
 count=1
 for i in $(seq 2 51); do
   docker run --rm \
     --name client$count \
-    --net my_spa_net \
-    --ip 192.168.100.$i \
+    --net py-mtls_client_net \
+    --ip 192.168.10.$i \
+    --cap-add=NET_ADMIN \
     -e CLIENT_NAME=client$count \
     my-client-image
   count=$((count + 1))
+
 done
 
-# docker run --rm -it \
-#   --name debug-client \
-#   --net my_spa_net \
-#   --ip 192.168.100.123 \
-#   -e CLIENT_NAME=client1 \
-#   my-client-image bash
-
-
+# docker run -it --rm --name client3 --net py-mtls_client_net --ip 192.168.10.3 --cap-add=NET_ADMIN -e CLIENT_NAME=client3 my-client-image

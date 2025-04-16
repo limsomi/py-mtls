@@ -3,6 +3,9 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y iptables iproute2 net-tools
+
+
 # 소스 코드 복사
 COPY src/server/server_tls.py ./server_tls.py
 COPY ssl ./ssl
@@ -13,4 +16,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 
 # 서버 실행
-CMD ["python", "server_tls.py"]
+CMD ["python3","-u", "server_tls.py"]
